@@ -43,8 +43,6 @@ internal class Program
             }
             Console.Write($"{match.AwayTeam}\n");
         }
-
-        var test = infos.LastOrDefault();
     }
 
     private static void WriteToConsole(int? homeScore, int? awayScore, ConsoleColor homeColor, ConsoleColor awayColor)
