@@ -1,4 +1,5 @@
-﻿using PuppeteerSharp;
+﻿using System.Diagnostics;
+using PuppeteerSharp;
 using PuppeteerSharp.Input;
 
 namespace Oddsportal_Scraper;
@@ -9,7 +10,22 @@ internal class Program
     {
         var scraper = new Scraper();
         var url = "https://www.oddsportal.com/matches/football/";
-        var infos = await scraper.GetData(url);
+        List<MatchInfos> infos;
+        while (true)
+        {
+            try
+            {
+                Console.WriteLine("Trying to Scrape Matches");
+                infos = await scraper.GetData(url);
+                break;
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine($"Something failed trying again in 30 seconds. Error Message: {e.Message}");
+                await Task.Delay(30000);
+            }
+        }
+        
         foreach (var match in infos)
         {
             Console.Write($"{match.HomeTeam} ");
@@ -55,10 +71,14 @@ public class Scraper
 {
     public async Task<List<MatchInfos>> GetData(string url)
     {
+        var sw = new Stopwatch();
+        sw.Start();
         var browser = await LaunchBrowser();
         var page = await browser.NewPageAsync();
         page = await OpenUrl(page, url);
         var matchInfos = await ExtractMatchInfos(page);
+        sw.Stop();
+        Console.WriteLine($"It took {sw.Elapsed.TotalSeconds}s to Scrape all Matches.");
         await browser.CloseAsync();
         return matchInfos;
     }
@@ -69,7 +89,7 @@ public class Scraper
         await browserFetcher.DownloadAsync();
         var browser = await Puppeteer.LaunchAsync(new LaunchOptions
         {
-            Headless = false,
+            Headless = true,
             Args = new[] { "--start-maximized" }
         });
         return browser;
@@ -144,11 +164,11 @@ public class Scraper
                 continue;
             }
 
-            var HomeScore = await teamScores[0].GetPropertyAsync("innerText");
-            var AwayScore = await teamScores[1].GetPropertyAsync("innerText");
+            var homeScore = await teamScores[0].GetPropertyAsync("innerText");
+            var awayScore = await teamScores[1].GetPropertyAsync("innerText");
 
-            var homeScoreText = await HomeScore.JsonValueAsync();
-            var awayScoreText = await AwayScore.JsonValueAsync();
+            var homeScoreText = await homeScore.JsonValueAsync();
+            var awayScoreText = await awayScore.JsonValueAsync();
 
             if (homeScoreText is string homeScoreText2)
             {

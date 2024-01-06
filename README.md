@@ -1,1 +1,2 @@
-Small football Oddsportal scraper getting the names of the home team and away team + the score
+Small football Oddsportal scraper getting the names of the home and away team + the score.
+I tried with Basketball which also works
