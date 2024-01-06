@@ -86,15 +86,6 @@ public class Scraper
             Button = MouseButton.Left
         });
         await ScrollToBottom(page);
-        // var htmlLength = await page.MainFrame.GetContentAsync();
-        // string lengthBefore;
-        // do
-        // {
-        //     lengthBefore = htmlLength;
-        //     await page.EvaluateExpressionAsync("window.scrollBy(0, 20000)");
-        //     await Task.Delay(2000);
-        //     htmlLength = await page.MainFrame.GetContentAsync();
-        // } while (htmlLength.Length > lengthBefore.Length);
         return page;
     }
     
