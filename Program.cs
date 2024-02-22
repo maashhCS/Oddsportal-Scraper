@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using PuppeteerSharp;
 using PuppeteerSharp.Input;
 
@@ -28,6 +29,7 @@ internal class Program
         
         foreach (var match in infos)
         {
+            Console.Write($"{match.KickOff?.ToString("hh\\:mm")} ");
             Console.Write($"{match.HomeTeam} ");
             if (match.HomeTeamScore > match.AwayTeamScore)
             {
@@ -71,13 +73,26 @@ public class Scraper
     {
         var sw = new Stopwatch();
         sw.Start();
-        var browser = await LaunchBrowser();
-        var page = await browser.NewPageAsync();
-        page = await OpenUrl(page, url);
-        var matchInfos = await ExtractMatchInfos(page);
-        sw.Stop();
-        Console.WriteLine($"It took {sw.Elapsed.TotalSeconds}s to Scrape all Matches.");
-        await browser.CloseAsync();
+        List<MatchInfos> matchInfos;
+        IBrowser browser = null;
+
+        try
+        {
+            browser = await LaunchBrowser();
+            var page = await browser.NewPageAsync();
+            page = await OpenUrl(page, url);
+            matchInfos = await ExtractMatchInfos(page);
+            sw.Stop();
+            Console.WriteLine($"It took {sw.Elapsed.TotalSeconds}s to Scrape all Matches.");
+            await browser.CloseAsync();
+        }
+        finally
+        {
+            if (browser != null)
+            {
+                await browser.CloseAsync();
+            }
+        }
         return matchInfos;
     }
 
@@ -127,16 +142,19 @@ public class Scraper
 
     private async Task<List<MatchInfos>> ExtractMatchInfos(IPage page)
     {
-        var matchDiv = await page.MainFrame.QuerySelectorAsync(
-            @"#app > div > div.w-full.flex-center.bg-gray-med_light > div > main > div.relative.w-full.flex-grow-1.min-w-\[320px\].bg-white-main > div.tabs.min-md\:\!mx-\[10px\] > div:nth-child(4) > div:nth-child(1)");
+        var matchDiv = await page.MainFrame.QuerySelectorAsync(@"#app > div > div.w-full.flex-center.bg-gray-med_light > div > main > div.relative.w-full.flex-grow-1.min-w-\[320px\].bg-white-main > div.min-h-\[206px\] > div > div:nth-child(4) > div:nth-child(1)");
         var matchDivs = await matchDiv.QuerySelectorAllAsync("div > div[id]");
         var matchInfosList = new List<MatchInfos>();
         foreach (var item in matchDivs)
         {
             var teamNames = await item.QuerySelectorAllAsync("p[class=\"truncate participant-name\"]");
-            if (teamNames == null)
+            if (teamNames == null || teamNames.Length == 0)
             {
-                continue;
+                teamNames = await item.QuerySelectorAllAsync("p[class=\"participant-name truncate\"]");
+                if (teamNames == null || teamNames.Length == 0)
+                { 
+                    continue;
+                }
             }
 
             var resultHome = await teamNames[0].GetPropertyAsync("innerText");
@@ -153,9 +171,28 @@ public class Scraper
                     AwayTeam = away.Trim()
                 });
             }
+            
+            var kickOffTimeDiv = await item.QuerySelectorAsync("div[data-testid=\"time-item\"]");
+            var kickOffTime = await kickOffTimeDiv.QuerySelectorAsync("div > p");
+            var kickOffTimeInner = await kickOffTime.GetPropertyAsync("innerText");
+            var kickOffTimeText = await kickOffTimeInner.JsonValueAsync();
+
+            if (kickOffTimeText is string kickOffTimeText2)
+            {
+                if (TimeSpan.TryParseExact(kickOffTimeText2, @"hh\:mm",
+                        CultureInfo.InvariantCulture, out var ts))
+                {
+                    matchinfo.KickOff = ts;
+                }
+                else
+                {
+                    matchinfo.KickOff = null;
+                }
+            }
 
             var teamsScoresDiv = await item.QuerySelectorAsync(
-                "div > a > div > div.next-m\\:flex.next-m\\:\\!mt-0.ml-2.mt-2.min-h-\\[32px\\].w-full > div.max-mt\\:flex-col.max-mt\\:gap-2.max-mt\\:py-2.flex.h-full.w-full > div.flex.w-full.items-center.max-mt\\:max-w-\\[297px\\].max-w-full > div > div > div > div");
+                "div > a > div.max-mt\\:flex-col.max-mt\\:gap-2.max-mt\\:py-2.flex.h-full.w-full > div.flex.w-full.items-center.max-mt\\:max-w-\\[297px\\].max-w-full > div > div > div > div");
+
             var teamScores = await teamsScoresDiv.QuerySelectorAllAsync("div");
             if (teamScores.Length < 2)
             {
@@ -191,8 +228,10 @@ public class Scraper
                     matchinfo.AwayTeamScore = Convert.ToInt32(awayScoreText2);
                 }
             }
+            
         }
 
+        await page.CloseAsync();
         return matchInfosList;
     }
 }
@@ -203,4 +242,5 @@ public class MatchInfos
     public int? HomeTeamScore { get; set; }
     public string AwayTeam { get; set; }
     public int? AwayTeamScore { get; set; }
+    public TimeSpan? KickOff { get; set; }
 }
