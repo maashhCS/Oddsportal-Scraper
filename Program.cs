@@ -29,7 +29,18 @@ internal class Program
         
         foreach (var match in infos)
         {
-            Console.Write($"{match.KickOff?.ToString("hh\\:mm")} ");
+            if (match.KickOff != null)
+            {
+                Console.Write($"{match.KickOff?.ToString("hh\\:mm")} ");
+            }
+            else if(match.LiveMinutes != null)
+            {
+                Console.Write($"{match.LiveMinutes?.TotalMinutes}' ");
+            }
+            else if(match.IsHalfTime)
+            {
+                Console.Write("HT ");
+            }
             Console.Write($"{match.HomeTeam} ");
             if (match.HomeTeamScore > match.AwayTeamScore)
             {
@@ -184,6 +195,14 @@ public class Scraper
                 {
                     matchinfo.KickOff = ts;
                 }
+                else if (double.TryParse(string.Concat(kickOffTimeText2.Where(char.IsNumber)), out var minutes))
+                {
+                    matchinfo.LiveMinutes = TimeSpan.FromMinutes(minutes);
+                }
+                else if (kickOffTimeText2 == "HT")
+                {
+                    matchinfo.IsHalfTime = true;
+                }
                 else
                 {
                     matchinfo.KickOff = null;
@@ -242,5 +261,7 @@ public class MatchInfos
     public int? HomeTeamScore { get; set; }
     public string AwayTeam { get; set; }
     public int? AwayTeamScore { get; set; }
+    public bool IsHalfTime { get; set; }
     public TimeSpan? KickOff { get; set; }
+    public TimeSpan? LiveMinutes { get; set; }
 }
