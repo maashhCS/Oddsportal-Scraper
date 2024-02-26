@@ -12,7 +12,7 @@ Contributions are welcome! If you would like to contribute to this project, plea
 
 ## Future Enhancements
 
-- **League Data**: Add support for fetching historical data.
+- **League Data**: Add support for fetching league data.
 - **Historical Data**: Add support for fetching historical data.
 - **Additional Features**: Explore options to expand functionality, such as retrieving specific sports data or refining data extraction methods.
 
