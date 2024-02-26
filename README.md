@@ -4,7 +4,7 @@ This repository contains a web scraper built using Puppeteer Sharp for scraping 
 
 ## Overview
 
-The scraper is designed to retrieve sports game information for a specific date. It utilizes Puppeteer Sharp. Currently, it only supports Today's matches, with plans to extend functionality to retrieve historical data, specific dates, leagues etc...
+The scraper is designed to retrieve sports game information for a specific date. It utilizes Puppeteer Sharp. Currently, it only supports football Today's matches, with plans to extend functionality to retrieve historical data, specific dates, leagues etc...
 
 ## Contributing
 
