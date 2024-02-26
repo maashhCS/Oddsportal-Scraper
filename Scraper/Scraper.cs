@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Oddsportal_Scraper.Classes;
 using PuppeteerSharp;
 using PuppeteerSharp.Input;
@@ -8,11 +9,69 @@ namespace Oddsportal_Scraper.Scraper;
 
 public class Scraper
 {
-    public async Task<List<MatchInfos>> GetData(string url)
+    public async Task<ExtractionInfos> GetDailyData(string url)
     {
         var sw = new Stopwatch();
         sw.Start();
-        List<MatchInfos> matchInfos;
+        ExtractionInfos infos = new ExtractionInfos();
+
+        switch (GetSport(url))
+        {
+            case Sport.Football:
+                infos.Sport = Sport.Football;
+                break;
+            case Sport.Basketball:
+                throw new NotImplementedException("Basketball processing is not implemented.");
+                break;
+            case Sport.Baseball:
+                throw new NotImplementedException("Baseball processing is not implemented.");
+                break;
+            case Sport.Hockey:
+                throw new NotImplementedException("Hockey processing is not implemented.");
+                break;
+            case Sport.Tennis:
+                throw new NotImplementedException("Tennis processing is not implemented.");
+                break;
+            case Sport.Badminton:
+                throw new NotImplementedException("Badminton processing is not implemented.");
+                break;
+            case Sport.Darts:
+                throw new NotImplementedException("Darts processing is not implemented.");
+                break;
+            case Sport.Cricket:
+                throw new NotImplementedException("Cricket processing is not implemented.");
+                break;
+            case Sport.MMA:
+                throw new NotImplementedException("MMA processing is not implemented.");
+                break;
+            case Sport.Esports:
+                throw new NotImplementedException("Esports processing is not implemented.");
+                break;
+            case Sport.Handball:
+                throw new NotImplementedException("Handball processing is not implemented.");
+                break;
+            case Sport.Futsal:
+                throw new NotImplementedException("Futsal processing is not implemented.");
+                break;
+            case Sport.Snooker:
+                throw new NotImplementedException("Snooker processing is not implemented.");
+                break;
+            case Sport.Rugby:
+                throw new NotImplementedException("Rugby processing is not implemented.");
+                break;
+            case Sport.TableTennis:
+                throw new NotImplementedException("Table Tennis processing is not implemented.");
+                break;
+            case Sport.Volleyball:
+                throw new NotImplementedException("Volleyball processing is not implemented.");
+                break;
+            case Sport.Boxing:
+                throw new NotImplementedException("Boxing processing is not implemented.");
+                break;
+            default:
+                throw new NotImplementedException("Sport not Found");
+                break;
+        }
         IBrowser browser = null;
 
         try
@@ -20,7 +79,7 @@ public class Scraper
             browser = await LaunchBrowser();
             var page = await browser.NewPageAsync();
             page = await OpenUrl(page, url);
-            matchInfos = await ExtractMatchInfos(page);
+            infos.Matches = await ExtractMatchInfos(page);
             sw.Stop();
             Console.WriteLine($"It took {sw.Elapsed.TotalSeconds}s to Scrape all Matches.");
             await browser.CloseAsync();
@@ -32,7 +91,60 @@ public class Scraper
                 await browser.CloseAsync();
             }
         }
-        return matchInfos;
+
+        return infos;
+    }
+
+    private Sport GetSport(string url)
+    {
+        var pattern = @"matches/(?<sport>\w+)/?$";
+
+        var match = Regex.Match(url.ToLower(), pattern, RegexOptions.IgnoreCase);
+
+        if (match.Success)
+        {
+            switch (match.Groups["sport"].Value)
+            {
+                case "football":
+                    return Sport.Football;
+                case "basketball":
+                    return Sport.Basketball;
+                case "baseball":
+                    return Sport.Baseball;
+                case "hockey":
+                    return Sport.Hockey;
+                case "tennis":
+                    return Sport.Tennis;
+                case "badminton":
+                    return Sport.Tennis;
+                case "darts":
+                    return Sport.Darts;
+                case "cricket":
+                    return Sport.Cricket;
+                case "mma":
+                    return Sport.MMA;
+                case "esports":
+                    return Sport.Esports;
+                case "handball":
+                    return Sport.Handball;
+                case "futsal":
+                    return Sport.Futsal;
+                case "snooker":
+                    return Sport.Snooker;
+                case "table-tennis":
+                    return Sport.TableTennis;
+                case "rugby-union":
+                    return Sport.Rugby;
+                case "volleyball":
+                    return Sport.Volleyball;
+                case "boxing":
+                    return Sport.Boxing;
+                default:
+                    throw new NotImplementedException("Sport not Found");
+            }
+        }
+
+        throw new ArgumentException("Invalid URL format. Sport name not found.");
     }
 
     private async Task<IBrowser> LaunchBrowser()
@@ -50,8 +162,7 @@ public class Scraper
     private async Task<IPage> OpenUrl(IPage page, string url)
     {
         await page.SetViewportAsync(new ViewPortOptions { Width = 1920, Height = 1080, DeviceScaleFactor = 1 });
-        await page.GoToAsync(url);
-        await Task.Delay(2000);
+        await page.GoToAsync(url, WaitUntilNavigation.DOMContentLoaded);
         await page.WaitForSelectorAsync("#onetrust-reject-all-handler");
         await page.ClickAsync("#onetrust-reject-all-handler", new ClickOptions
         {
@@ -60,10 +171,10 @@ public class Scraper
         await ScrollToBottom(page);
         return page;
     }
-    
+
     private async Task ScrollToBottom(IPage page)
     {
-        string script = @"(async () => {
+        var script = @"(async () => {
                             const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
                             while (true) {
                                 const lastHeight = document.body.scrollHeight;
@@ -81,7 +192,8 @@ public class Scraper
 
     private async Task<List<MatchInfos>> ExtractMatchInfos(IPage page)
     {
-        var matchDiv = await page.MainFrame.QuerySelectorAsync(@"#app > div > div.w-full.flex-center.bg-gray-med_light > div > main > div.relative.w-full.flex-grow-1.min-w-\[320px\].bg-white-main > div.min-h-\[206px\] > div > div:nth-child(4) > div:nth-child(1)");
+        var matchDiv = await page.MainFrame.QuerySelectorAsync(
+            @"#app > div > div.w-full.flex-center.bg-gray-med_light > div > main > div.relative.w-full.flex-grow-1.min-w-\[320px\].bg-white-main > div.min-h-\[206px\] > div > div:nth-child(4) > div:nth-child(1)");
         var matchDivs = await matchDiv.QuerySelectorAllAsync("div > div[id]");
         var matchInfosList = new List<MatchInfos>();
         foreach (var item in matchDivs)
@@ -91,7 +203,7 @@ public class Scraper
             {
                 teamNames = await item.QuerySelectorAllAsync("p[class=\"participant-name truncate\"]");
                 if (teamNames == null || teamNames.Length == 0)
-                { 
+                {
                     continue;
                 }
             }
@@ -106,11 +218,12 @@ public class Scraper
             {
                 matchInfosList.Add(matchinfo = new MatchInfos
                 {
+                    Id = Guid.NewGuid(),
                     HomeTeam = home.Trim(),
                     AwayTeam = away.Trim()
                 });
             }
-            
+
             var kickOffTimeDiv = await item.QuerySelectorAsync("div[data-testid=\"time-item\"]");
             var kickOffTime = await kickOffTimeDiv.QuerySelectorAsync("div > p");
             var kickOffTimeInner = await kickOffTime.GetPropertyAsync("innerText");
@@ -129,7 +242,7 @@ public class Scraper
                 }
                 else if (kickOffTimeText2 == "HT")
                 {
-                    matchinfo.IsHalfTime = true;
+                    matchinfo.IsBreakPeriod = true;
                 }
                 else
                 {
@@ -151,16 +264,17 @@ public class Scraper
 
             var homeScoreText = await homeScore.JsonValueAsync();
             var awayScoreText = await awayScore.JsonValueAsync();
-
+            PeriodScore period;
+            matchinfo.PeriodScores.Add(period = new PeriodScore());
             if (homeScoreText is string homeScoreText2)
             {
                 if (string.IsNullOrEmpty(homeScoreText2))
                 {
-                    matchinfo.HomeTeamScore = null;
+                    period.HomeScore = null;
                 }
                 else
                 {
-                    matchinfo.HomeTeamScore = Convert.ToInt32(homeScoreText2);
+                    period.HomeScore = Convert.ToInt32(homeScoreText2);
                 }
             }
 
@@ -168,14 +282,13 @@ public class Scraper
             {
                 if (string.IsNullOrEmpty(awayScoreText2))
                 {
-                    matchinfo.AwayTeamScore = null;
+                    period.AwayScore = null;
                 }
                 else
                 {
-                    matchinfo.AwayTeamScore = Convert.ToInt32(awayScoreText2);
+                    period.HomeScore = Convert.ToInt32(awayScoreText2);
                 }
             }
-            
         }
 
         await page.CloseAsync();

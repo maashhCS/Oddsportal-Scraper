@@ -8,13 +8,13 @@ internal class Program
     {
         var scraper = new Scraper.Scraper();
         var url = "https://www.oddsportal.com/matches/football/";
-        List<MatchInfos> infos;
+        ExtractionInfos infos;
         while (true)
         {
             try
             {
                 Console.WriteLine("Trying to Scrape Matches");
-                infos = await scraper.GetData(url);
+                infos = await scraper.GetDailyData(url);
                 break;
             }
             catch (Exception e)
@@ -24,7 +24,7 @@ internal class Program
             }
         }
         
-        foreach (var match in infos)
+        foreach (var match in infos.Matches)
         {
             if (match.KickOff != null)
             {
@@ -32,24 +32,28 @@ internal class Program
             }
             else if(match.LiveMinutes != null)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.Write($"{match.LiveMinutes?.TotalMinutes}' ");
+                Console.ResetColor();
             }
-            else if(match.IsHalfTime)
+            else if(match.IsBreakPeriod)
             {
                 Console.Write("HT ");
             }
             Console.Write($"{match.HomeTeam} ");
-            if (match.HomeTeamScore > match.AwayTeamScore)
+            var homeScore = match.PeriodScores.Sum(x => x.HomeScore);
+            var awayScore = match.PeriodScores.Sum(x => x.AwayScore);
+            if (homeScore > awayScore)
             {
-                WriteToConsole(match.HomeTeamScore, match.AwayTeamScore, ConsoleColor.Green, ConsoleColor.Red);
+                WriteToConsole(homeScore, awayScore, ConsoleColor.Green, ConsoleColor.Red);
             }
-            else if (match.HomeTeamScore == match.AwayTeamScore)
+            else if (homeScore == awayScore)
             {
-                WriteToConsole(match.HomeTeamScore, match.AwayTeamScore, ConsoleColor.Yellow, ConsoleColor.Yellow);
+                WriteToConsole(homeScore, awayScore, ConsoleColor.Yellow, ConsoleColor.Yellow);
             }
             else
             {
-                WriteToConsole(match.HomeTeamScore, match.AwayTeamScore, ConsoleColor.Red, ConsoleColor.Green);
+                WriteToConsole(homeScore, awayScore, ConsoleColor.Red, ConsoleColor.Green);
             }
             Console.Write($"{match.AwayTeam}\n");
         }
