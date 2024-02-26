@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using Oddsportal_Scraper.Classes;
+using Oddsportal_Scraper.Enum;
 using PuppeteerSharp;
 using PuppeteerSharp.Input;
 

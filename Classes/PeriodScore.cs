@@ -1,4 +1,6 @@
-﻿namespace Oddsportal_Scraper.Classes;
+﻿using Oddsportal_Scraper.Enum;
+
+namespace Oddsportal_Scraper.Classes;
 
 public class PeriodScore
 {

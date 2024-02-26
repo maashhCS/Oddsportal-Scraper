@@ -1,4 +1,4 @@
-﻿namespace Oddsportal_Scraper;
+﻿namespace Oddsportal_Scraper.Enum;
 
 public enum PeriodTypes
 {
@@ -7,5 +7,7 @@ public enum PeriodTypes
     TopInning,
     BottomInning,
     Set,
-    Round
+    Round,
+    Overtime,
+    Penalties
 }

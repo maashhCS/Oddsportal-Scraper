@@ -1,4 +1,4 @@
-﻿namespace Oddsportal_Scraper;
+﻿namespace Oddsportal_Scraper.Enum;
 
 public enum Sport
 {
