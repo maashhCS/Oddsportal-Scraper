@@ -14,7 +14,10 @@ public class Scraper
     {
         var sw = new Stopwatch();
         sw.Start();
-        ExtractionInfos infos = new ExtractionInfos();
+        ExtractionInfos infos = new ExtractionInfos
+        {
+            Date = DateTime.Today,
+        };
 
         switch (GetSport(url))
         {
