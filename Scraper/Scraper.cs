@@ -8,74 +8,21 @@ using PuppeteerSharp.Input;
 
 namespace Oddsportal_Scraper.Scraper;
 
-public class Scraper
+public static class Scraper
 {
-    public async Task<ExtractionInfos> GetDailyData(string url)
+    public static async Task<ExtractionInfos> GetNextMatchesData(Sport sport, DateTime date)
+    {
+        return await GetNextMatchesData(
+            $"https://www.oddsportal.com/matches/{SportUrlParameter.GetSportUrlParameter(sport)}/{date.ToString("yyyyMMdd")}");
+    }
+
+    public static async Task<ExtractionInfos> GetNextMatchesData(string url)
     {
         var sw = new Stopwatch();
         sw.Start();
-        ExtractionInfos infos = new ExtractionInfos
-        {
-            Date = DateTime.Today,
-        };
+        var infos = new ExtractionInfos();
 
-        switch (GetSport(url))
-        {
-            case Sport.Football:
-                infos.Sport = Sport.Football;
-                break;
-            case Sport.Basketball:
-                throw new NotImplementedException("Basketball processing is not implemented.");
-                break;
-            case Sport.Baseball:
-                throw new NotImplementedException("Baseball processing is not implemented.");
-                break;
-            case Sport.Hockey:
-                throw new NotImplementedException("Hockey processing is not implemented.");
-                break;
-            case Sport.Tennis:
-                throw new NotImplementedException("Tennis processing is not implemented.");
-                break;
-            case Sport.Badminton:
-                throw new NotImplementedException("Badminton processing is not implemented.");
-                break;
-            case Sport.Darts:
-                throw new NotImplementedException("Darts processing is not implemented.");
-                break;
-            case Sport.Cricket:
-                throw new NotImplementedException("Cricket processing is not implemented.");
-                break;
-            case Sport.MMA:
-                throw new NotImplementedException("MMA processing is not implemented.");
-                break;
-            case Sport.Esports:
-                throw new NotImplementedException("Esports processing is not implemented.");
-                break;
-            case Sport.Handball:
-                throw new NotImplementedException("Handball processing is not implemented.");
-                break;
-            case Sport.Futsal:
-                throw new NotImplementedException("Futsal processing is not implemented.");
-                break;
-            case Sport.Snooker:
-                throw new NotImplementedException("Snooker processing is not implemented.");
-                break;
-            case Sport.Rugby:
-                throw new NotImplementedException("Rugby processing is not implemented.");
-                break;
-            case Sport.TableTennis:
-                throw new NotImplementedException("Table Tennis processing is not implemented.");
-                break;
-            case Sport.Volleyball:
-                throw new NotImplementedException("Volleyball processing is not implemented.");
-                break;
-            case Sport.Boxing:
-                throw new NotImplementedException("Boxing processing is not implemented.");
-                break;
-            default:
-                throw new NotImplementedException("Sport not Found");
-                break;
-        }
+        infos = GetSportAndDate(url);
         IBrowser browser = null;
 
         try
@@ -88,6 +35,13 @@ public class Scraper
             Console.WriteLine($"It took {sw.Elapsed.TotalSeconds}s to Scrape all Matches.");
             await browser.CloseAsync();
         }
+        catch (Exception e)
+        {
+            if (browser != null)
+            {
+                await browser.CloseAsync();
+            }
+        }
         finally
         {
             if (browser != null)
@@ -99,59 +53,46 @@ public class Scraper
         return infos;
     }
 
-    private Sport GetSport(string url)
+    private static ExtractionInfos GetSportAndDate(string url)
     {
-        var pattern = @"matches/(?<sport>\w+)/?$";
+        var infos = new ExtractionInfos();
 
-        var match = Regex.Match(url.ToLower(), pattern, RegexOptions.IgnoreCase);
+        var patternSport = @"/(?<sport>\w+)(/\d{8})?/?$";
+        var matchSport = Regex.Match(url.ToLower(), patternSport, RegexOptions.IgnoreCase);
 
-        if (match.Success)
+        if (matchSport.Success)
         {
-            switch (match.Groups["sport"].Value)
+            infos.Sport = SportUrlParameter.GetSportUrlParameter(matchSport.Groups["sport"].Value);
+
+            var dateMatch = matchSport.Groups["sport"].Value + "/(?<date>\\d{8})/?$";
+            var matchDate = Regex.Match(url.ToLower(), dateMatch, RegexOptions.IgnoreCase);
+
+            if (matchDate.Success)
             {
-                case "football":
-                    return Sport.Football;
-                case "basketball":
-                    return Sport.Basketball;
-                case "baseball":
-                    return Sport.Baseball;
-                case "hockey":
-                    return Sport.Hockey;
-                case "tennis":
-                    return Sport.Tennis;
-                case "badminton":
-                    return Sport.Tennis;
-                case "darts":
-                    return Sport.Darts;
-                case "cricket":
-                    return Sport.Cricket;
-                case "mma":
-                    return Sport.MMA;
-                case "esports":
-                    return Sport.Esports;
-                case "handball":
-                    return Sport.Handball;
-                case "futsal":
-                    return Sport.Futsal;
-                case "snooker":
-                    return Sport.Snooker;
-                case "table-tennis":
-                    return Sport.TableTennis;
-                case "rugby-union":
-                    return Sport.Rugby;
-                case "volleyball":
-                    return Sport.Volleyball;
-                case "boxing":
-                    return Sport.Boxing;
-                default:
-                    throw new NotImplementedException("Sport not Found");
+                if (DateTime.TryParseExact(matchDate.Groups["date"].Value, "yyyyMMdd", CultureInfo.InvariantCulture,
+                        DateTimeStyles.None, out var date))
+                {
+                    infos.Date = date;
+                }
+                else
+                {
+                    throw new ArgumentException(
+                        $"Invalid URL format. Date not found. Format has to be \"www.oddsportal.com/{infos.Sport}/*\"yyyyMMdd\"*\" but was \"{url}\"");
+                }
             }
+            else
+            {
+                infos.Date = DateTime.Today;
+            }
+        
+            return infos;
         }
 
-        throw new ArgumentException("Invalid URL format. Sport name not found.");
+        throw new ArgumentException(
+            $"Invalid URL format. Format has to be \"www.oddsportal.com/*sport*/*\"yyyyMMdd\"*\" but was \"{url}\"");
     }
 
-    private async Task<IBrowser> LaunchBrowser()
+    private static async Task<IBrowser> LaunchBrowser()
     {
         using var browserFetcher = new BrowserFetcher();
         await browserFetcher.DownloadAsync();
@@ -163,7 +104,7 @@ public class Scraper
         return browser;
     }
 
-    private async Task<IPage> OpenUrl(IPage page, string url)
+    private static async Task<IPage> OpenUrl(IPage page, string url)
     {
         await page.SetViewportAsync(new ViewPortOptions { Width = 1920, Height = 1080, DeviceScaleFactor = 1 });
         await page.GoToAsync(url, WaitUntilNavigation.DOMContentLoaded);
@@ -176,7 +117,7 @@ public class Scraper
         return page;
     }
 
-    private async Task ScrollToBottom(IPage page)
+    private static async Task ScrollToBottom(IPage page)
     {
         var script = @"(async () => {
                             const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -194,7 +135,7 @@ public class Scraper
         await page.EvaluateExpressionAsync(script);
     }
 
-    private async Task<List<MatchInfos>> ExtractMatchInfos(IPage page)
+    private static async Task<List<MatchInfos>> ExtractMatchInfos(IPage page)
     {
         var matchDiv = await page.MainFrame.QuerySelectorAsync(
             @"#app > div > div.w-full.flex-center.bg-gray-med_light > div > main > div.relative.w-full.flex-grow-1.min-w-\[320px\].bg-white-main > div.min-h-\[206px\] > div > div:nth-child(4) > div:nth-child(1)");

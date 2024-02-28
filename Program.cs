@@ -1,4 +1,5 @@
 ﻿using Oddsportal_Scraper.Classes;
+using Oddsportal_Scraper.Enum;
 
 namespace Oddsportal_Scraper;
 
@@ -6,7 +7,6 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        var scraper = new Scraper.Scraper();
         var url = "https://www.oddsportal.com/matches/football/";
         ExtractionInfos infos;
         while (true)
@@ -14,7 +14,7 @@ internal class Program
             try
             {
                 Console.WriteLine("Trying to Scrape Matches");
-                infos = await scraper.GetDailyData(url);
+                infos = await Scraper.Scraper.GetNextMatchesData(Sport.Football, DateTime.Today);
                 break;
             }
             catch (Exception e)
