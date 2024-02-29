@@ -124,7 +124,7 @@ public static class Scraper
                             while (true) {
                                 const lastHeight = document.body.scrollHeight;
                                 window.scrollTo({ top: lastHeight, behavior: 'smooth' });
-                                await delay(1000);
+                                await delay(500);
                                 const newHeight = document.body.scrollHeight;
                                 if (newHeight === lastHeight) {
                                     break;
