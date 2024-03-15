@@ -23,10 +23,23 @@ internal class Program
                 await Task.Delay(30000);
             }
         }
-        
+
+        var currentCountry = "";
+        var currentLeague = "";
         foreach (var match in infos.Matches)
         {
-            Console.Write($"Country: {match.Country} League: {match.League} ");
+            if (currentCountry != match.Country)
+            {
+                currentCountry = match.Country;
+                Console.WriteLine($"Country: {currentCountry} ");
+            }
+            
+            if (currentLeague != match.League)
+            {
+                currentLeague = match.League;
+                Console.WriteLine($"League: {currentLeague} ");
+            }
+            
             if (match.KickOff != null)
             {
                 Console.Write($"{match.KickOff?.ToString("hh\\:mm")} ");
