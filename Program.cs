@@ -26,6 +26,7 @@ internal class Program
         
         foreach (var match in infos.Matches)
         {
+            Console.Write($"Country: {match.Country} League: {match.League} ");
             if (match.KickOff != null)
             {
                 Console.Write($"{match.KickOff?.ToString("hh\\:mm")} ");

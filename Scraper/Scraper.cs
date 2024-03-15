@@ -141,6 +141,8 @@ public static class Scraper
             @"#app > div > div.w-full.flex-center.bg-gray-med_light > div > main > div.relative.w-full.flex-grow-1.min-w-\[320px\].bg-white-main > div.min-h-\[206px\] > div > div:nth-child(4) > div:nth-child(1)");
         var matchDivs = await matchDiv.QuerySelectorAllAsync("div > div[id]");
         var matchInfosList = new List<MatchInfos>();
+        var currentCountry = "";
+        var currentLeague = "";
         foreach (var item in matchDivs)
         {
             var teamNames = await item.QuerySelectorAllAsync("p[class=\"truncate participant-name\"]");
@@ -169,31 +171,52 @@ public static class Scraper
                 });
             }
 
-            var kickOffTimeDiv = await item.QuerySelectorAsync("div[data-testid=\"time-item\"]");
-            var kickOffTime = await kickOffTimeDiv.QuerySelectorAsync("div > p");
-            var kickOffTimeInner = await kickOffTime.GetPropertyAsync("innerText");
-            var kickOffTimeText = await kickOffTimeInner.JsonValueAsync();
-
-            if (kickOffTimeText is string kickOffTimeText2)
+            var eventDiv = await item.QuerySelectorAllAsync("div[set] > div");
+            if (eventDiv != null && eventDiv.Length == 3)
             {
-                if (TimeSpan.TryParseExact(kickOffTimeText2, @"hh\:mm",
-                        CultureInfo.InvariantCulture, out var ts))
+                var leagueDiv = eventDiv[0];
+                var country = await leagueDiv.QuerySelectorAsync("p[class=\"truncate max-sm:hidden\"]");
+                if (country == null)
                 {
-                    matchinfo.KickOff = ts;
+                    country = await leagueDiv.QuerySelectorAsync("p[class=\"max-sm:hidden truncate\"]");
                 }
-                else if (double.TryParse(string.Concat(kickOffTimeText2.Where(char.IsNumber)), out var minutes))
+
+                if (country != null)
                 {
-                    matchinfo.LiveMinutes = TimeSpan.FromMinutes(minutes);
+                    var countryInnerText = await country.GetPropertyAsync("innerText");
+                    var countryObj = await countryInnerText.JsonValueAsync();
+                    if (countryObj is string countryText)
+                    {
+                        matchinfo.Country = countryText;
+                        currentCountry = countryText;
+                    }
                 }
-                else if (kickOffTimeText2 == "HT")
+
+                var league = await leagueDiv.QuerySelectorAllAsync("div > a");
+
+                if (league != null && league.Length == 3)
                 {
-                    matchinfo.IsBreakPeriod = true;
+                    var leagueInnerText = await league[2].GetPropertyAsync("innerText");
+                    var leagueObj = await leagueInnerText.JsonValueAsync();
+                    if (leagueObj is string leagueText)
+                    {
+                        matchinfo.League = leagueText;
+                        currentLeague = leagueText;
+                    }
                 }
-                else
-                {
-                    matchinfo.KickOff = null;
-                }
+
+               var kickOffTime = await eventDiv[2].QuerySelectorAsync("div > div > a > div > div > div p");
+               matchinfo = await ExtractTime(kickOffTime, matchinfo);
+               await kickOffTime.GetPropertyAsync("innerText");
             }
+            else
+            {
+                matchinfo.Country = currentCountry;
+                matchinfo.League = currentLeague;
+            }
+            
+            var kickOffTimeDiv = await item.QuerySelectorAsync("div > div > a > div > div > div p");
+            matchinfo = await ExtractTime(kickOffTimeDiv, matchinfo);
 
             var teamsScoresDiv = await item.QuerySelectorAsync(
                 "div > a > div.max-mt\\:flex-col.max-mt\\:gap-2.max-mt\\:py-2.flex.h-full.w-full > div.flex.w-full.items-center.max-mt\\:max-w-\\[297px\\].max-w-full > div > div > div > div");
@@ -238,5 +261,34 @@ public static class Scraper
 
         await page.CloseAsync();
         return matchInfosList;
+    }
+
+    private static async Task<MatchInfos> ExtractTime(IElementHandle element, MatchInfos matchinfo)
+    {
+        var kickOffTimeInner = await element.GetPropertyAsync("innerText");
+        var kickOffTimeText = await kickOffTimeInner.JsonValueAsync();
+
+        if (kickOffTimeText is string kickOffTimeText2)
+        {
+            if (TimeSpan.TryParseExact(kickOffTimeText2, @"hh\:mm",
+                    CultureInfo.InvariantCulture, out var ts))
+            {
+                matchinfo.KickOff = ts;
+            }
+            else if (double.TryParse(string.Concat(kickOffTimeText2.Where(char.IsNumber)), out var minutes))
+            {
+                matchinfo.LiveMinutes = TimeSpan.FromMinutes(minutes);
+            }
+            else if (kickOffTimeText2 == "HT")
+            {
+                matchinfo.IsBreakPeriod = true;
+            }
+            else
+            {
+                matchinfo.KickOff = null;
+            }
+        }
+
+        return matchinfo;
     }
 }
