@@ -99,7 +99,7 @@ public static class Scraper
         var browser = await Puppeteer.LaunchAsync(new LaunchOptions
         {
             Headless = true,
-            Args = new[] { "--start-maximized" }
+            Args = ["--start-maximized"]
         });
         return browser;
     }
@@ -143,8 +143,12 @@ public static class Scraper
         var matchInfosList = new List<MatchInfos>();
         var currentCountry = "";
         var currentLeague = "";
+        var scrapedCount = 0;
         foreach (var item in matchDivs)
         {
+            Console.Clear();
+            Console.Write($"Scraping Matches ({scrapedCount} / {matchDivs.Length})");
+            
             var teamNames = await item.QuerySelectorAllAsync("p[class=\"truncate participant-name\"]");
             if (teamNames == null || teamNames.Length == 0)
             {
@@ -219,11 +223,17 @@ public static class Scraper
             matchinfo = await ExtractTime(kickOffTimeDiv, matchinfo);
 
             var teamsScoresDiv = await item.QuerySelectorAsync(
-                "div > a > div.max-mt\\:flex-col.max-mt\\:gap-2.max-mt\\:py-2.flex.h-full.w-full > div.flex.w-full.items-center.max-mt\\:max-w-\\[297px\\].max-w-full > div > div > div > div");
+                "div > div > a > div > div.flex.w-full > div > div > div > div");
 
+            if (teamsScoresDiv == null)
+            {
+                continue;
+            }
+            
             var teamScores = await teamsScoresDiv.QuerySelectorAllAsync("div");
             if (teamScores.Length < 2)
             {
+                scrapedCount++;
                 continue;
             }
 
@@ -257,6 +267,8 @@ public static class Scraper
                     period.HomeScore = Convert.ToInt32(awayScoreText2);
                 }
             }
+            
+            scrapedCount++;
         }
 
         await page.CloseAsync();

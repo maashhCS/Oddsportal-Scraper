@@ -13,7 +13,6 @@ internal class Program
         {
             try
             {
-                Console.WriteLine("Trying to Scrape Matches");
                 infos = await Scraper.Scraper.GetNextMatchesData(Sport.Football, DateTime.Today);
                 break;
             }
@@ -69,6 +68,7 @@ internal class Program
             {
                 WriteToConsole(homeScore, awayScore, ConsoleColor.Red, ConsoleColor.Green);
             }
+
             Console.Write($"{match.AwayTeam}\n");
         }
     }
