@@ -4,19 +4,18 @@ using System.Text.RegularExpressions;
 using Oddsportal_Scraper.Classes;
 using Oddsportal_Scraper.Enum;
 using PuppeteerSharp;
-using PuppeteerSharp.Input;
 
 namespace Oddsportal_Scraper.Scraper;
 
-public static class Scraper
+public class Scraper
 {
-    public static async Task<ExtractionInfos> GetNextMatchesData(Sport sport, DateTime date)
+    public async Task<ExtractionInfos> GetNextMatchesData(Sport sport, DateTime date)
     {
         return await GetNextMatchesData(
-            $"https://www.oddsportal.com/matches/{SportUrlParameter.GetSportUrlParameter(sport)}/{date.ToString("yyyyMMdd")}");
+            $"https://www.oddsportal.com/matches/{SportUrlParameter.GetSportUrlParameter(sport)}/{date:yyyyMMdd}");
     }
 
-    public static async Task<ExtractionInfos> GetNextMatchesData(string url)
+    public async Task<ExtractionInfos> GetNextMatchesData(string url)
     {
         var sw = new Stopwatch();
         sw.Start();
@@ -35,13 +34,6 @@ public static class Scraper
             Console.WriteLine($"It took {sw.Elapsed.TotalSeconds}s to Scrape all Matches.");
             await browser.CloseAsync();
         }
-        catch (Exception e)
-        {
-            if (browser != null)
-            {
-                await browser.CloseAsync();
-            }
-        }
         finally
         {
             if (browser != null)
@@ -53,7 +45,7 @@ public static class Scraper
         return infos;
     }
 
-    private static ExtractionInfos GetSportAndDate(string url)
+    private ExtractionInfos GetSportAndDate(string url)
     {
         var infos = new ExtractionInfos();
 
@@ -84,7 +76,7 @@ public static class Scraper
             {
                 infos.Date = DateTime.Today;
             }
-        
+
             return infos;
         }
 
@@ -92,7 +84,7 @@ public static class Scraper
             $"Invalid URL format. Format has to be \"www.oddsportal.com/*sport*/*\"yyyyMMdd\"*\" but was \"{url}\"");
     }
 
-    private static async Task<IBrowser> LaunchBrowser()
+    private async Task<IBrowser> LaunchBrowser()
     {
         using var browserFetcher = new BrowserFetcher();
         await browserFetcher.DownloadAsync();
@@ -104,20 +96,15 @@ public static class Scraper
         return browser;
     }
 
-    private static async Task<IPage> OpenUrl(IPage page, string url)
+    private async Task<IPage> OpenUrl(IPage page, string url)
     {
         await page.SetViewportAsync(new ViewPortOptions { Width = 1920, Height = 1080, DeviceScaleFactor = 1 });
         await page.GoToAsync(url, WaitUntilNavigation.DOMContentLoaded);
-        await page.WaitForSelectorAsync("#onetrust-reject-all-handler");
-        await page.ClickAsync("#onetrust-reject-all-handler", new ClickOptions
-        {
-            Button = MouseButton.Left
-        });
         await ScrollToBottom(page);
         return page;
     }
 
-    private static async Task ScrollToBottom(IPage page)
+    private async Task ScrollToBottom(IPage page)
     {
         var script = @"(async () => {
                             const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -135,20 +122,47 @@ public static class Scraper
         await page.EvaluateExpressionAsync(script);
     }
 
-    private static async Task<List<MatchInfos>> ExtractMatchInfos(IPage page)
+    private async Task<IElementHandle[]> GetMatchDivs(IPage page)
     {
         var matchDiv = await page.MainFrame.QuerySelectorAsync(
             @"#app > div > div.w-full.flex-center.bg-gray-med_light > div > main > div.relative.w-full.flex-grow-1.min-w-\[320px\].bg-white-main > div.min-h-\[206px\] > div > div:nth-child(4) > div:nth-child(1)");
-        var matchDivs = await matchDiv.QuerySelectorAllAsync("div > div[id]");
+        return await matchDiv.QuerySelectorAllAsync("div > div[id]");
+    }
+
+    private async Task<List<MatchInfos>> ExtractMatchInfos(IPage page)
+    {
+        var matchDivs = await GetMatchDivs(page);
+        var matches = await ExtractData(matchDivs, page);
+        await page.CloseAsync();
+        return matches;
+    }
+
+    private async Task<List<MatchInfos>> ExtractData(IElementHandle[] divs, IPage page)
+    {
+        var tasks = new List<Task<List<MatchInfos>>>();
+        var matchesForEachThread = divs.Length / Environment.ProcessorCount;
+        for (int i = 0; i < Environment.ProcessorCount; i++)
+        {
+            var start = i * matchesForEachThread;
+            var end = (i == Environment.ProcessorCount - 1) ? divs.Length : start + matchesForEachThread;
+            var divSubset = divs.Skip(start).Take(end - start).ToArray();
+
+            tasks.Add(Task.Run(async () => await ExtractMatchDivsInfos(divSubset, page)));
+        }
+
+        var results = await Task.WhenAll(tasks);
+        return results.SelectMany(r => r).ToList();
+    }
+
+    private async Task<List<MatchInfos>> ExtractMatchDivsInfos(IElementHandle[] divSubset, IPage page)
+    {
         var matchInfosList = new List<MatchInfos>();
         var currentCountry = "";
         var currentLeague = "";
         var scrapedCount = 0;
-        foreach (var item in matchDivs)
+        
+        foreach (var item in divSubset)
         {
-            Console.Clear();
-            Console.Write($"Scraping Matches ({scrapedCount} / {matchDivs.Length})");
-            
             var teamNames = await item.QuerySelectorAllAsync("p[class=\"truncate participant-name\"]");
             if (teamNames == null || teamNames.Length == 0)
             {
@@ -209,16 +223,16 @@ public static class Scraper
                     }
                 }
 
-               var kickOffTime = await eventDiv[2].QuerySelectorAsync("div > div > a > div > div > div p");
-               matchinfo = await ExtractTime(kickOffTime, matchinfo);
-               await kickOffTime.GetPropertyAsync("innerText");
+                var kickOffTime = await eventDiv[2].QuerySelectorAsync("div > div > a > div > div > div p");
+                matchinfo = await ExtractTime(kickOffTime, matchinfo);
+                await kickOffTime.GetPropertyAsync("innerText");
             }
             else
             {
                 matchinfo.Country = currentCountry;
                 matchinfo.League = currentLeague;
             }
-            
+
             var kickOffTimeDiv = await item.QuerySelectorAsync("div > div > a > div > div > div p");
             matchinfo = await ExtractTime(kickOffTimeDiv, matchinfo);
 
@@ -229,7 +243,7 @@ public static class Scraper
             {
                 continue;
             }
-            
+
             var teamScores = await teamsScoresDiv.QuerySelectorAllAsync("div");
             if (teamScores.Length < 2)
             {
@@ -267,15 +281,13 @@ public static class Scraper
                     period.HomeScore = Convert.ToInt32(awayScoreText2);
                 }
             }
-            
+
             scrapedCount++;
         }
-
-        await page.CloseAsync();
         return matchInfosList;
     }
 
-    private static async Task<MatchInfos> ExtractTime(IElementHandle element, MatchInfos matchinfo)
+    private async Task<MatchInfos> ExtractTime(IElementHandle element, MatchInfos matchinfo)
     {
         var kickOffTimeInner = await element.GetPropertyAsync("innerText");
         var kickOffTimeText = await kickOffTimeInner.JsonValueAsync();

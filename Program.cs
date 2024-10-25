@@ -13,7 +13,8 @@ internal class Program
         {
             try
             {
-                infos = await Scraper.Scraper.GetNextMatchesData(Sport.Football, DateTime.Today);
+                var scraper = new Scraper.Scraper();
+                infos = await scraper.GetNextMatchesData(Sport.Football, DateTime.Today);
                 break;
             }
             catch (Exception e)
@@ -25,12 +26,12 @@ internal class Program
 
         var currentCountry = "";
         var currentLeague = "";
-        foreach (var match in infos.Matches)
+        foreach (var match in infos.Matches.OrderBy(x => x.Country).ThenBy(x => x.League).ThenBy(x => x.KickOff).ThenBy(x => x.HomeTeam))
         {
             if (currentCountry != match.Country)
             {
                 currentCountry = match.Country;
-                Console.WriteLine($"Country: {currentCountry} ");
+                Console.WriteLine($"\nCountry: {currentCountry} ");
             }
             
             if (currentLeague != match.League)
