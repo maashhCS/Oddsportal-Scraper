@@ -159,7 +159,6 @@ public class Scraper
         var matchInfosList = new List<MatchInfos>();
         var currentCountry = "";
         var currentLeague = "";
-        var scrapedCount = 0;
         
         foreach (var item in divSubset)
         {
@@ -247,7 +246,6 @@ public class Scraper
             var teamScores = await teamsScoresDiv.QuerySelectorAllAsync("div");
             if (teamScores.Length < 2)
             {
-                scrapedCount++;
                 continue;
             }
 
@@ -281,8 +279,7 @@ public class Scraper
                     period.HomeScore = Convert.ToInt32(awayScoreText2);
                 }
             }
-
-            scrapedCount++;
+            
         }
         return matchInfosList;
     }
