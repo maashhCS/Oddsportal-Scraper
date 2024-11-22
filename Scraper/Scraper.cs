@@ -9,12 +9,29 @@ namespace Oddsportal_Scraper.Scraper;
 
 public class Scraper
 {
+    /// <summary>
+    ///     Scrapes match data for the specified sport and date.
+    /// </summary>
+    /// <param name="sport">Enum Sports</param>
+    /// <param name="date">DateTime Date</param>
+    /// <returns>
+    ///     An asynchronous task that, when completed, returns an ExtractionInfos object containing the scraped match data
+    ///     for the specified sport and date.
+    /// </returns>
     public async Task<ExtractionInfos> GetNextMatchesData(Sport sport, DateTime date)
     {
         return await GetNextMatchesData(
             $"https://www.oddsportal.com/matches/{SportUrlParameter.GetSportUrlParameter(sport)}/{date:yyyyMMdd}");
     }
 
+    /// <summary>
+    ///     Scrapes match data from the specified URL.
+    /// </summary>
+    /// <param name="url">The URL from which to scrape match data.</param>
+    /// <returns>
+    ///     An asynchronous task that, when completed, returns an ExtractionInfos object containing the scraped match data
+    ///     from the specified URL.
+    /// </returns>
     public async Task<ExtractionInfos> GetNextMatchesData(string url)
     {
         var sw = new Stopwatch();
@@ -140,11 +157,11 @@ public class Scraper
     private async Task<List<MatchInfos>> ExtractData(IElementHandle[] divs, IPage page)
     {
         var tasks = new List<Task<List<MatchInfos>>>();
-        var matchesForEachThread = divs.Length / Environment.ProcessorCount;
-        for (int i = 0; i < Environment.ProcessorCount; i++)
+        int matchesForEachThread = divs.Length / Environment.ProcessorCount;
+        for (var i = 0; i < Environment.ProcessorCount; i++)
         {
             var start = i * matchesForEachThread;
-            var end = (i == Environment.ProcessorCount - 1) ? divs.Length : start + matchesForEachThread;
+            var end = i == Environment.ProcessorCount - 1 ? divs.Length : start + matchesForEachThread;
             var divSubset = divs.Skip(start).Take(end - start).ToArray();
 
             tasks.Add(Task.Run(async () => await ExtractMatchDivsInfos(divSubset, page)));
@@ -159,7 +176,7 @@ public class Scraper
         var matchInfosList = new List<MatchInfos>();
         var currentCountry = "";
         var currentLeague = "";
-        
+
         foreach (var item in divSubset)
         {
             var teamNames = await item.QuerySelectorAllAsync("p[class=\"truncate participant-name\"]");
@@ -232,6 +249,7 @@ public class Scraper
                 matchinfo.League = currentLeague;
             }
 
+
             var kickOffTimeDiv = await item.QuerySelectorAsync("div > div > a > div > div > div p");
             matchinfo = await ExtractTime(kickOffTimeDiv, matchinfo);
 
@@ -254,8 +272,8 @@ public class Scraper
 
             var homeScoreText = await homeScore.JsonValueAsync();
             var awayScoreText = await awayScore.JsonValueAsync();
-            PeriodScore period;
-            matchinfo.PeriodScores.Add(period = new PeriodScore());
+            Period period;
+            matchinfo.MatchScore.Periods.Add(period = new Period());
             if (homeScoreText is string homeScoreText2)
             {
                 if (string.IsNullOrEmpty(homeScoreText2))
@@ -279,9 +297,82 @@ public class Scraper
                     period.HomeScore = Convert.ToInt32(awayScoreText2);
                 }
             }
-            
         }
+
         return matchInfosList;
+    }
+
+    private PeriodType GetPeriodType(Sport sport, List<PeriodType> periods, int periodCount)
+    {
+        switch (sport)
+        {
+            case Sport.Football:
+                if (periodCount < 3)
+                {
+                    return periods[0];
+                }
+
+                if (periodCount == 3)
+                {
+                    return periods[1];
+                }
+
+                return periods[2];
+            case Sport.Basketball:
+                if (periodCount <= 4)
+                {
+                    return periods[0];
+                }
+
+                return periods[1];
+            case Sport.Baseball:
+                if (periodCount <= 9)
+                {
+                    return periods[0];
+                }
+
+                return periods[1];
+            case Sport.Hockey:
+                if (periodCount <= 3)
+                {
+                    return periods[0];
+                }
+
+                return periods[1];
+            case Sport.Tennis:
+                return periods[0];
+            case Sport.Badminton:
+                return periods[0];
+            case Sport.Cricket:
+                return periods[0];
+            case Sport.TableTennis:
+                return periods[0];
+            case Sport.Volleyball:
+                return periods[0];
+            case Sport.Darts:
+                return periods[0];
+            case Sport.MMA:
+                return periods[0];
+            case Sport.Esports:
+                return periods[0];
+            case Sport.Snooker:
+                return periods[0];
+            case Sport.Boxing:
+                return periods[0];
+            case Sport.Handball:
+                return periods[0];
+            case Sport.Futsal:
+                return periods[0];
+            case Sport.Rugby:
+                if (periodCount <= 2)
+                {
+                    return periods[0];
+                }
+
+                return periods[1];
+            default:
+                throw new ArgumentException("Sport not Found");
+        }
     }
 
     private async Task<MatchInfos> ExtractTime(IElementHandle element, MatchInfos matchinfo)

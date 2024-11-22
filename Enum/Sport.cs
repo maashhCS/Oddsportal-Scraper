@@ -19,4 +19,5 @@ public enum Sport
     TableTennis,
     Volleyball,
     Boxing,
+    AmericanFootball,
 }

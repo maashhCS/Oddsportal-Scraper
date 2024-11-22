@@ -40,6 +40,8 @@ public static class SportUrlParameter
                 return "volleyball";
             case Sport.Boxing:
                 return "boxing";
+            case Sport.AmericanFootball:
+                return "american-football";
             default:
                 throw new ArgumentException("Sport not Found");
         }
@@ -83,6 +85,8 @@ public static class SportUrlParameter
                 return Sport.Volleyball;
             case "boxing":
                 return Sport.Boxing;
+            case "american-football":
+                return Sport.AmericanFootball;
             default:
                 throw new ArgumentException("Sport not Found");
         }

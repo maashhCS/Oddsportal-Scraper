@@ -7,7 +7,6 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        var url = "https://www.oddsportal.com/matches/football/";
         ExtractionInfos infos;
         while (true)
         {
@@ -55,8 +54,8 @@ internal class Program
                 Console.Write("HT ");
             }
             Console.Write($"{match.HomeTeam} ");
-            var homeScore = match.PeriodScores.Sum(x => x.HomeScore);
-            var awayScore = match.PeriodScores.Sum(x => x.AwayScore);
+            var homeScore = match.MatchScore.Periods.Sum(x => x.HomeScore);
+            var awayScore = match.MatchScore.Periods.Sum(x => x.AwayScore);
             if (homeScore > awayScore)
             {
                 WriteToConsole(homeScore, awayScore, ConsoleColor.Green, ConsoleColor.Red);

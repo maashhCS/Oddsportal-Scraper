@@ -8,8 +8,10 @@ public class MatchInfos
     public string HomeTeam { get; set; }
     public string AwayTeam { get; set; }
 
-    public List<PeriodScore> PeriodScores { get; set; } = new();
     public bool IsBreakPeriod { get; set; }
     public TimeSpan? KickOff { get; set; }
     public TimeSpan? LiveMinutes { get; set; }
+    
+    public MatchScore MatchScore { get; set; } = new();
+    public List<Bet> Bets { get; set; } = new();
 }
