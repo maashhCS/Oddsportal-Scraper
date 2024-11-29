@@ -13,7 +13,8 @@ internal class Program
             try
             {
                 var scraper = new Scraper.Scraper();
-                infos = await scraper.GetNextMatchesData(Sport.Football, DateTime.Today);
+                // infos = await scraper.GetNextMatchesData(Sport.Football, DateTime.Today);
+                infos = await scraper.HTMLAgilityPack(Sport.Football, DateTime.Today);
                 break;
             }
             catch (Exception e)

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using HtmlAgilityPack;
 using Oddsportal_Scraper.Classes;
 using Oddsportal_Scraper.Enum;
 using PuppeteerSharp;
@@ -59,6 +60,15 @@ public class Scraper
             }
         }
 
+        return infos;
+    }
+    
+    public async Task<ExtractionInfos> HTMLAgilityPack(Sport sport, DateTime date)
+    {
+        var url = $"https://www.oddsportal.com/matches/{SportUrlParameter.GetSportUrlParameter(sport)}/{date:yyyyMMdd}";
+        var infos = new ExtractionInfos();
+        var web = new HtmlWeb();
+        var doc = web.Load(url);
         return infos;
     }
 
